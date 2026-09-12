@@ -8,18 +8,26 @@ class FirebaseService {
   factory FirebaseService() => _instance;
   FirebaseService._internal();
 
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  FirebaseFirestore? get _db {
+    try {
+      return FirebaseFirestore.instance;
+    } catch (_) {
+      return null;
+    }
+  }
 
   // ── 1. Seed Initial Products & Data ───────────────────────────────────────
   Future<void> seedDatabaseIfEmpty() async {
     try {
-      final snapshot = await _db.collection('products').limit(1).get();
+      final db = _db;
+      if (db == null) return;
+      final snapshot = await db.collection('products').limit(1).get();
       if (snapshot.docs.isEmpty) {
         debugPrint('🌱 Seeding products catalog to Firestore...');
-        final batch = _db.batch();
+        final batch = db.batch();
 
         for (final p in kAllProducts) {
-          final docRef = _db.collection('products').doc(p.id);
+          final docRef = db.collection('products').doc(p.id);
           batch.set(docRef, {
             'id': p.id,
             'name': p.name,
@@ -48,7 +56,9 @@ class FirebaseService {
 
   // ── 2. Real-time Stream Products ──────────────────────────────────────────
   Stream<List<Product>> getProductsStream() {
-    return _db.collection('products').snapshots().map((snapshot) {
+    final db = _db;
+    if (db == null) return Stream.value(kAllProducts);
+    return db.collection('products').snapshots().map((snapshot) {
       if (snapshot.docs.isEmpty) return kAllProducts;
       return snapshot.docs.map((doc) {
         final data = doc.data();
@@ -76,18 +86,28 @@ class FirebaseService {
   // ── 3. Save Order to Firestore ────────────────────────────────────────────
   Future<void> saveOrder(CustomerOrder order) async {
     try {
-      await _db.collection('orders').doc(order.id).set({
+      final db = _db;
+      if (db == null) return;
+      await db.collection('orders').doc(order.id).set({
         'id': order.id,
         'date': order.date,
         'total': order.total,
         'status': order.status,
+        'statusEnum': order.statusEnum.name,
         'deliverySlot': order.deliverySlot,
         'agent': order.agent,
         'agentPhone': order.agentPhone,
+        'driverName': order.driverInfo.name,
+        'driverPhone': order.driverInfo.phone,
+        'driverRating': order.driverInfo.rating,
+        'driverVehicleNo': order.driverInfo.vehicleNo,
         'address': order.address,
         'points': order.points,
         'paymentMethod': order.paymentMethod,
         'txnId': order.txnId,
+        'etaText': order.etaText,
+        'ratingScore': order.ratingScore,
+        'ratingFeedback': order.ratingFeedback,
         'timestamp': FieldValue.serverTimestamp(),
         'items': order.items.map((item) => {
           'productId': item.product.id,
@@ -99,7 +119,7 @@ class FirebaseService {
           'price': item.product.price,
           'lineTotal': item.lineTotal,
         }).toList(),
-      });
+      }, SetOptions(merge: true));
       debugPrint('📦 Order ${order.id} saved to Firestore!');
     } catch (e) {
       debugPrint('⚠️ Error saving order to Firestore: $e');
@@ -108,7 +128,9 @@ class FirebaseService {
 
   // ── 4. Real-time Stream Orders ─────────────────────────────────────────────
   Stream<List<CustomerOrder>> getOrdersStream() {
-    return _db
+    final db = _db;
+    if (db == null) return Stream.value([]);
+    return db
         .collection('orders')
         .orderBy('timestamp', descending: true)
         .snapshots()
@@ -131,19 +153,39 @@ class FirebaseService {
           );
         }).toList();
 
+        final statusStr = data['status'] ?? 'Confirmed';
+        final statusEnum = data['statusEnum'] != null
+            ? OrderStatus.values.firstWhere(
+                (e) => e.name == data['statusEnum'],
+                orElse: () => OrderStatus.fromString(statusStr),
+              )
+            : OrderStatus.fromString(statusStr);
+
+        final driver = DriverInfo(
+          name: data['driverName'] ?? data['agent'] ?? 'Harish Shetty',
+          phone: data['driverPhone'] ?? data['agentPhone'] ?? '+91 9876543210',
+          rating: (data['driverRating'] ?? 4.9).toDouble(),
+          vehicleNo: data['driverVehicleNo'] ?? 'KA 09 EA 4521',
+        );
+
         return CustomerOrder(
           id: data['id'] ?? doc.id,
           date: data['date'] ?? '',
           items: items,
           total: (data['total'] ?? 0) as int,
-          status: data['status'] ?? 'Confirmed',
+          status: statusStr,
+          statusEnum: statusEnum,
           deliverySlot: data['deliverySlot'] ?? '6AM–9AM',
-          agent: data['agent'] ?? 'Ravi Kumar',
-          agentPhone: data['agentPhone'] ?? '+91 9876543210',
+          agent: driver.name,
+          agentPhone: driver.phone,
+          driverInfo: driver,
           address: data['address'] ?? '',
           points: (data['points'] ?? 0) as int,
           paymentMethod: data['paymentMethod'] ?? 'UPI / Online',
           txnId: data['txnId'] ?? '',
+          etaText: data['etaText'] ?? '25–35 mins',
+          ratingScore: data['ratingScore'] as int?,
+          ratingFeedback: data['ratingFeedback'] as String?,
         );
       }).toList();
     });
@@ -157,7 +199,9 @@ class FirebaseService {
     required List<SavedAddress> addresses,
   }) async {
     try {
-      await _db.collection('users').doc(phone).set({
+      final db = _db;
+      if (db == null) return;
+      await db.collection('users').doc(phone).set({
         'phone': phone,
         'name': name,
         'rewardPoints': rewardPoints,

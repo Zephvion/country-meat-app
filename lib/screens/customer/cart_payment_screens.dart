@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../constants/payment_assets.dart';
 import '../../state/app_state.dart';
 import '../../theme/app_theme.dart';
 
@@ -15,9 +17,29 @@ class CustCartScreen extends StatefulWidget {
 class _CustCartScreenState extends State<CustCartScreen> {
   final _couponCtrl = TextEditingController();
   bool _couponApplied = false;
+  Timer? _slotRefreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-select the open slot if available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final appState = context.read<AppState>();
+      final openSlot = AppState.getCurrentlyOpenSlot();
+      if (openSlot != null && !AppState.isSlotOpen(appState.selectedSlot)) {
+        appState.setSlot(openSlot);
+      }
+    });
+    // Periodically refresh the cart screen so slot status updates live across time boundaries
+    _slotRefreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   void dispose() {
+    _slotRefreshTimer?.cancel();
     _couponCtrl.dispose();
     super.dispose();
   }
@@ -39,7 +61,7 @@ class _CustCartScreenState extends State<CustCartScreen> {
           padding: const EdgeInsets.fromLTRB(4, 10, 16, 6),
           child: Row(children: [
             IconButton(
-              onPressed: () => widget.nav('home'),
+              onPressed: () => widget.nav('back'),
               icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
             ),
             const Expanded(
@@ -149,14 +171,59 @@ class _CustCartScreenState extends State<CustCartScreen> {
 
                 // Delivery slot
                 const SizedBox(height: 4),
-                const Text('Delivery Slot',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                Row(
+                  children: [
+                    const Text('Delivery Slot',
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppState.hasAnyOpenSlot()
+                            ? AppColors.success.withValues(alpha: 0.12)
+                            : AppColors.gray200,
+                        borderRadius: BorderRadius.circular(AppRadius.full),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.circle,
+                            size: 6,
+                            color: AppState.hasAnyOpenSlot()
+                                ? AppColors.success
+                                : AppColors.gray500,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            AppState.hasAnyOpenSlot() ? 'Slots Active' : 'Slots Closed',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppState.hasAnyOpenSlot()
+                                  ? AppColors.success
+                                  : AppColors.gray600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 8),
                 Row(children: [
-                  _SlotChip(label: '6AM–9AM', selected: appState.selectedSlot == '6AM–9AM',
-                      onTap: () => appState.setSlot('6AM–9AM')),
-                  _SlotChip(label: '9AM–12PM', selected: appState.selectedSlot == '9AM–12PM',
-                      onTap: () => appState.setSlot('9AM–12PM')),
+                  _SlotChip(
+                    label: AppState.slotMorning,
+                    selected: appState.selectedSlot == AppState.slotMorning,
+                    isOpen: AppState.isSlotOpen(AppState.slotMorning),
+                    onTap: () => appState.setSlot(AppState.slotMorning),
+                  ),
+                  _SlotChip(
+                    label: AppState.slotLateMorning,
+                    selected: appState.selectedSlot == AppState.slotLateMorning,
+                    isOpen: AppState.isSlotOpen(AppState.slotLateMorning),
+                    onTap: () => appState.setSlot(AppState.slotLateMorning),
+                  ),
                 ]),
 
                 const SizedBox(height: 14),
@@ -166,7 +233,7 @@ class _CustCartScreenState extends State<CustCartScreen> {
                     label: 'Delivery Address',
                     val: appState.defaultAddress,
                     action: 'Change',
-                    onAction: () => _showAddressPickerSheet(context, appState)),
+                    onAction: () => widget.nav('location', param: 'fromCart')),
                 const SizedBox(height: 8),
                 _InfoRow(
                     icon: '🚚',
@@ -395,141 +462,33 @@ class CustPaymentScreen extends StatefulWidget {
 }
 
 class _CustPaymentScreenState extends State<CustPaymentScreen> {
-  bool _showingWalletSubScreen = false;
-  String _selectedPaymentOption = 'phonepe';
+  String _selectedPaymentOption = 'phonepe'; // 'cm_wallet', 'phonepe', 'gpay', 'slice', 'whatsapp', 'amazon', 'upi_custom', 'card', 'cod'
+  bool _showCustomUpiInput = false;
+  final TextEditingController _customUpiCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _customUpiCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    final total = appState.cartTotal > 0 ? appState.cartTotal + 40 : 950;
+    final subtotal = appState.cartTotal > 0 ? appState.cartTotal : 910;
+    final deliveryFee = 40;
+    final total = subtotal + deliveryFee;
 
-    if (_showingWalletSubScreen) {
-      return _buildWalletSubScreen(context, total);
-    }
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _CircleNavHeader(title: 'Bill total : ₹$total', onBack: () => widget.nav('cart')),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                children: [
-                  // RECOMMENDED
-                  const _SubSectionHeader('RECOMMENDED'),
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: AppShadows.subtle,
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: Column(
-                        children: [
-                          InkWell(
-                            onTap: () => setState(() => _showingWalletSubScreen = true),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                children: [
-                                  const Text('🐓', style: TextStyle(fontSize: 28)),
-                                  const SizedBox(width: 14),
-                                  const Expanded(
-                                    child: Text(
-                                      'Country Meat Wallet',
-                                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.gray900),
-                                    ),
-                                  ),
-                                  const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.gray800),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            color: const Color(0xFFFF5252),
-                            child: const Text(
-                              '5 % Instant Discount on Country Meat Pay',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // CARDS
-                  const _SubSectionHeader('CARDS'),
-                  _PaymentTile(
-                    iconWidget: const Icon(Icons.credit_card_rounded, color: Color(0xFFE53935), size: 24),
-                    title: 'Credit Card or Debit Card',
-                    trailingWidget: const Text('+', style: TextStyle(color: AppColors.brandRed, fontSize: 20, fontWeight: FontWeight.w700)),
-                    onTap: () => _pay(context, 'Credit/Debit Card'),
-                  ),
-
-                  // PAY BY ANY UPI APP
-                  const _SubSectionHeader('PAY BY ANY UPI APP'),
-                  _PaymentTile(
-                    iconWidget: _buildAppLogo('G', const Color(0xFF4285F4)),
-                    title: 'Google Pay UPI',
-                    onTap: () => _pay(context, 'Google Pay UPI'),
-                  ),
-                  _PaymentTile(
-                    iconWidget: _buildAppLogo('पे', const Color(0xFF5F259F)),
-                    title: 'PhonePe UPI',
-                    onTap: () => _pay(context, 'PhonePe UPI'),
-                  ),
-                  _PaymentTile(
-                    iconWidget: _buildAppLogo('slice', const Color(0xFF8B5CF6), isText: true),
-                    title: 'Slice Pay UPI',
-                    onTap: () => _pay(context, 'Slice Pay UPI'),
-                  ),
-                  _PaymentTile(
-                    iconWidget: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF25D366), size: 26),
-                    title: 'WhatsApp Pay UPI',
-                    onTap: () => _pay(context, 'WhatsApp Pay UPI'),
-                  ),
-                  _PaymentTile(
-                    iconWidget: _buildAppLogo('pay', const Color(0xFF232F3E), isText: true),
-                    title: 'Amazon Pay UPI',
-                    onTap: () => _pay(context, 'Amazon Pay UPI'),
-                  ),
-
-                  // CASH ON DELIVERY
-                  const _SubSectionHeader('PAY ON DELIVERY'),
-                  _PaymentTile(
-                    iconWidget: const Icon(Icons.payments_rounded, color: Color(0xFF16A34A), size: 24),
-                    title: 'Cash on Delivery (COD)',
-                    trailingWidget: const Text('Pay Cash', style: TextStyle(color: Color(0xFF16A34A), fontSize: 12, fontWeight: FontWeight.w800)),
-                    onTap: () => _pay(context, 'Cash on Delivery'),
-                  ),
-
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Wallet selection sub-screen
-  Widget _buildWalletSubScreen(BuildContext context, int total) {
     final optionNames = {
+      'cm_wallet': 'Country Meat Wallet (5% Off)',
       'phonepe': 'PhonePe UPI',
       'gpay': 'Google Pay UPI',
       'slice': 'Slice Pay UPI',
       'whatsapp': 'WhatsApp Pay UPI',
       'amazon': 'Amazon Pay UPI',
-      'add_upi': 'Custom UPI ID',
+      'upi_custom': _customUpiCtrl.text.isNotEmpty ? _customUpiCtrl.text.trim() : 'Custom UPI ID',
       'card': 'Credit / Debit Card',
+      'cod': 'Cash on Delivery (COD)',
     };
 
     return Scaffold(
@@ -537,86 +496,269 @@ class _CustPaymentScreenState extends State<CustPaymentScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // Top Navigation Header
             _CircleNavHeader(
-              title: 'Country Meat Wallet',
-              onBack: () => setState(() => _showingWalletSubScreen = false),
+              title: 'Payment Options',
+              onBack: () => widget.nav('cart'),
             ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  const Text(
-                    'Choose a payment option',
-                    style: TextStyle(fontSize: 14, color: AppColors.gray500, fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 14),
 
-                  _SelectablePayTile(
-                    id: 'phonepe',
-                    selectedId: _selectedPaymentOption,
-                    iconWidget: _buildAppLogo('पे', const Color(0xFF5F259F)),
-                    title: 'PhonePe UPI',
-                    onTap: () => setState(() => _selectedPaymentOption = 'phonepe'),
+            // Order Total Summary Banner
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.gray200),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: const [
+                      Icon(Icons.shopping_bag_outlined, color: AppColors.brandRed, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'Total Payable Amount',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.gray700,
+                        ),
+                      ),
+                    ],
                   ),
-                  _SelectablePayTile(
-                    id: 'gpay',
-                    selectedId: _selectedPaymentOption,
-                    iconWidget: _buildAppLogo('G', const Color(0xFF4285F4)),
-                    title: 'Google Pay UPI',
-                    onTap: () => setState(() => _selectedPaymentOption = 'gpay'),
-                  ),
-                  _SelectablePayTile(
-                    id: 'slice',
-                    selectedId: _selectedPaymentOption,
-                    iconWidget: _buildAppLogo('slice', const Color(0xFF8B5CF6), isText: true),
-                    title: 'Slice Pay UPI',
-                    onTap: () => setState(() => _selectedPaymentOption = 'slice'),
-                  ),
-                  _SelectablePayTile(
-                    id: 'whatsapp',
-                    selectedId: _selectedPaymentOption,
-                    iconWidget: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF25D366), size: 26),
-                    title: 'WhatsApp Pay UPI',
-                    onTap: () => setState(() => _selectedPaymentOption = 'whatsapp'),
-                  ),
-                  _SelectablePayTile(
-                    id: 'amazon',
-                    selectedId: _selectedPaymentOption,
-                    iconWidget: _buildAppLogo('pay', const Color(0xFF232F3E), isText: true),
-                    title: 'Amazon Pay UPI',
-                    onTap: () => setState(() => _selectedPaymentOption = 'amazon'),
-                  ),
-                  _SelectablePayTile(
-                    id: 'card',
-                    selectedId: _selectedPaymentOption,
-                    iconWidget: const Icon(Icons.credit_card_rounded, color: Color(0xFFE53935), size: 24),
-                    title: 'Credit Card or Debit Card',
-                    trailingWidget: const Text('+', style: TextStyle(color: AppColors.brandRed, fontSize: 20, fontWeight: FontWeight.w700)),
-                    onTap: () => setState(() => _selectedPaymentOption = 'card'),
+                  Text(
+                    '₹$total',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.gray900,
+                    ),
                   ),
                 ],
               ),
             ),
 
-            // Bottom Pay button
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                children: [
+                  // RECOMMENDED
+                  const _SubSectionHeader('RECOMMENDED'),
+                  _SelectablePaymentCard(
+                    id: 'cm_wallet',
+                    selectedId: _selectedPaymentOption,
+                    onTap: () => setState(() => _selectedPaymentOption = 'cm_wallet'),
+                    iconWidget: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF1F2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text('🐓', style: TextStyle(fontSize: 22)),
+                    ),
+                    title: 'Country Meat Wallet',
+                    subtitle: 'Available Balance: ₹${appState.walletBalance.toStringAsFixed(2)}',
+                    badgeWidget: Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF5252),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        '🏷️ 5% Instant Discount applied on Country Meat Pay',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 11.5),
+                      ),
+                    ),
+                  ),
+
+                  // PAY BY ANY UPI APP
+                  const _SubSectionHeader('PAY BY ANY UPI APP'),
+                  _SelectablePaymentCard(
+                    id: 'phonepe',
+                    selectedId: _selectedPaymentOption,
+                    onTap: () => setState(() => _selectedPaymentOption = 'phonepe'),
+                    iconWidget: _buildOfficialLogoContainer('phonepe'),
+                    title: 'PhonePe UPI',
+                    subtitle: 'Pay instantly using PhonePe',
+                  ),
+                  _SelectablePaymentCard(
+                    id: 'gpay',
+                    selectedId: _selectedPaymentOption,
+                    onTap: () => setState(() => _selectedPaymentOption = 'gpay'),
+                    iconWidget: _buildOfficialLogoContainer('gpay'),
+                    title: 'Google Pay UPI',
+                    subtitle: 'Pay securely using Google Pay',
+                  ),
+                  _SelectablePaymentCard(
+                    id: 'slice',
+                    selectedId: _selectedPaymentOption,
+                    onTap: () => setState(() => _selectedPaymentOption = 'slice'),
+                    iconWidget: _buildOfficialLogoContainer('slice'),
+                    title: 'Slice Pay UPI',
+                  ),
+                  _SelectablePaymentCard(
+                    id: 'whatsapp',
+                    selectedId: _selectedPaymentOption,
+                    onTap: () => setState(() => _selectedPaymentOption = 'whatsapp'),
+                    iconWidget: _buildOfficialLogoContainer('whatsapp'),
+                    title: 'WhatsApp Pay UPI',
+                  ),
+                  _SelectablePaymentCard(
+                    id: 'amazon',
+                    selectedId: _selectedPaymentOption,
+                    onTap: () => setState(() => _selectedPaymentOption = 'amazon'),
+                    iconWidget: _buildOfficialLogoContainer('amazon'),
+                    title: 'Amazon Pay UPI',
+                  ),
+
+                  // Add Custom UPI ID option
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _selectedPaymentOption == 'upi_custom' ? AppColors.brandRed : AppColors.gray200,
+                        width: _selectedPaymentOption == 'upi_custom' ? 2 : 1,
+                      ),
+                    ),
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedPaymentOption = 'upi_custom';
+                          _showCustomUpiInput = true;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                _buildOfficialLogoContainer('upi'),
+                                const SizedBox(width: 14),
+                                const Expanded(
+                                  child: Text(
+                                    'Add New UPI ID',
+                                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.gray900),
+                                  ),
+                                ),
+                                Radio<String>(
+                                  value: 'upi_custom',
+                                  groupValue: _selectedPaymentOption,
+                                  activeColor: AppColors.brandRed,
+                                  onChanged: (val) {
+                                    setState(() {
+                                      _selectedPaymentOption = val!;
+                                      _showCustomUpiInput = true;
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                            if (_selectedPaymentOption == 'upi_custom' || _showCustomUpiInput) ...[
+                              const SizedBox(height: 10),
+                              TextField(
+                                controller: _customUpiCtrl,
+                                decoration: InputDecoration(
+                                  hintText: 'Enter UPI ID (e.g. username@upi)',
+                                  hintStyle: const TextStyle(fontSize: 13, color: AppColors.gray400),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: const BorderSide(color: AppColors.gray300),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: const BorderSide(color: AppColors.brandRed, width: 1.5),
+                                  ),
+                                  isDense: true,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // CARDS
+                  const _SubSectionHeader('CARDS'),
+                  _SelectablePaymentCard(
+                    id: 'card',
+                    selectedId: _selectedPaymentOption,
+                    onTap: () => setState(() => _selectedPaymentOption = 'card'),
+                    iconWidget: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.credit_card_rounded, color: Color(0xFFE53935), size: 22),
+                    ),
+                    title: 'Credit Card or Debit Card',
+                    subtitle: 'Save & pay via Visa, Mastercard, RuPay',
+                  ),
+
+                  // PAY ON DELIVERY
+                  const _SubSectionHeader('PAY ON DELIVERY'),
+                  _SelectablePaymentCard(
+                    id: 'cod',
+                    selectedId: _selectedPaymentOption,
+                    onTap: () => setState(() => _selectedPaymentOption = 'cod'),
+                    iconWidget: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.payments_rounded, color: Color(0xFF16A34A), size: 22),
+                    ),
+                    title: 'Cash on Delivery (COD)',
+                    subtitle: 'Pay cash or UPI at the time of delivery',
+                  ),
+
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+
+            // Fixed Bottom CTA Bar
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               decoration: const BoxDecoration(
                 color: Colors.white,
                 border: Border(top: BorderSide(color: AppColors.gray200)),
+                boxShadow: AppShadows.subtle,
               ),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => _pay(context, optionNames[_selectedPaymentOption] ?? 'UPI / Wallet'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.brandRed,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              child: SafeArea(
+                top: false,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      final selectedTitle = optionNames[_selectedPaymentOption] ?? 'Selected Method';
+                      _pay(context, selectedTitle);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.brandRed,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
+                      textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                    child: Text('Pay ₹$total'),
                   ),
-                  child: Text('Pay ₹$total'),
                 ),
               ),
             ),
@@ -643,6 +785,21 @@ class _CustPaymentScreenState extends State<CustPaymentScreen> {
           fontSize: isText ? 11 : 16,
         ),
       ),
+    );
+  }
+
+  Widget _buildOfficialLogoContainer(String brandKey) {
+    return Container(
+      width: 40,
+      height: 40,
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      alignment: Alignment.center,
+      child: PaymentAssets.buildLogo(brandKey, height: 24),
     );
   }
 
@@ -676,6 +833,94 @@ class _CustPaymentScreenState extends State<CustPaymentScreen> {
           },
         );
       },
+    );
+  }
+}
+
+// Private Reusable Selectable Payment Card Component
+class _SelectablePaymentCard extends StatelessWidget {
+  final String id;
+  final String selectedId;
+  final VoidCallback onTap;
+  final Widget iconWidget;
+  final String title;
+  final String? subtitle;
+  final Widget? badgeWidget;
+
+  const _SelectablePaymentCard({
+    required this.id,
+    required this.selectedId,
+    required this.onTap,
+    required this.iconWidget,
+    required this.title,
+    this.subtitle,
+    this.badgeWidget,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = id == selectedId;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isSelected ? AppColors.brandRed : AppColors.gray200,
+          width: isSelected ? 2 : 1,
+        ),
+        boxShadow: AppShadows.subtle,
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  iconWidget,
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.gray900,
+                          ),
+                        ),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle!,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.gray500,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Radio<String>(
+                    value: id,
+                    groupValue: selectedId,
+                    activeColor: AppColors.brandRed,
+                    onChanged: (val) => onTap(),
+                  ),
+                ],
+              ),
+              if (badgeWidget != null) badgeWidget!,
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -870,8 +1115,14 @@ class _QtyBtn extends StatelessWidget {
 class _SlotChip extends StatelessWidget {
   final String label;
   final bool selected;
+  final bool isOpen;
   final VoidCallback onTap;
-  const _SlotChip({required this.label, required this.selected, required this.onTap});
+  const _SlotChip({
+    required this.label,
+    required this.selected,
+    required this.isOpen,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) => GestureDetector(
@@ -879,18 +1130,63 @@ class _SlotChip extends StatelessWidget {
     child: AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: selected ? AppColors.brandRedBg : AppColors.gray50,
+        color: isOpen
+            ? (selected ? AppColors.brandRedBg : AppColors.gray50)
+            : AppColors.gray100,
         border: Border.all(
-            color: selected ? AppColors.brandRed : AppColors.gray200, width: 1.5),
+          color: isOpen
+              ? (selected ? AppColors.brandRed : AppColors.gray200)
+              : AppColors.gray200,
+          width: selected ? 1.5 : 1.0,
+        ),
         borderRadius: BorderRadius.circular(AppRadius.full),
       ),
-      child: Text(label,
-          style: TextStyle(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.circle,
+            size: 7,
+            color: isOpen ? AppColors.success : AppColors.gray400,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
               fontWeight: FontWeight.w600,
-              color: selected ? AppColors.brandRed : AppColors.gray600,
-              fontSize: 13)),
+              color: isOpen
+                  ? (selected ? AppColors.brandRed : AppColors.gray800)
+                  : AppColors.gray500,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+            decoration: BoxDecoration(
+              color: isOpen
+                  ? (selected
+                      ? AppColors.brandRed.withValues(alpha: 0.15)
+                      : AppColors.success.withValues(alpha: 0.12))
+                  : AppColors.gray200,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              isOpen ? 'OPEN' : 'CLOSED',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                color: isOpen
+                    ? (selected ? AppColors.brandRed : AppColors.success)
+                    : AppColors.gray500,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ),
+        ],
+      ),
     ),
   );
 }
@@ -948,19 +1244,6 @@ class _BillRow extends StatelessWidget {
   );
 }
 
-class _SectionLabel extends StatelessWidget {
-  final String text;
-  const _SectionLabel(this.text);
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 10),
-    child: Text(text,
-        style: const TextStyle(
-            fontSize: 11, fontWeight: FontWeight.w700,
-            color: AppColors.gray400, letterSpacing: 1)),
-  );
-}
-
 class _SubSectionHeader extends StatelessWidget {
   final String text;
   const _SubSectionHeader(this.text);
@@ -976,107 +1259,6 @@ class _SubSectionHeader extends StatelessWidget {
           fontWeight: FontWeight.w700,
           color: AppColors.gray500,
           letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
-}
-
-class _PaymentTile extends StatelessWidget {
-  final Widget iconWidget;
-  final String title;
-  final Widget? trailingWidget;
-  final VoidCallback onTap;
-
-  const _PaymentTile({
-    required this.iconWidget,
-    required this.title,
-    this.trailingWidget,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: AppShadows.subtle,
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              SizedBox(width: 36, child: Center(child: iconWidget)),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.gray900),
-                ),
-              ),
-              trailingWidget ?? const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.gray800),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SelectablePayTile extends StatelessWidget {
-  final String id;
-  final String selectedId;
-  final Widget iconWidget;
-  final String title;
-  final Widget? trailingWidget;
-  final VoidCallback onTap;
-
-  const _SelectablePayTile({
-    required this.id,
-    required this.selectedId,
-    required this.iconWidget,
-    required this.title,
-    this.trailingWidget,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final selected = id == selectedId;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: selected ? AppColors.brandRed : Colors.transparent,
-          width: 2,
-        ),
-        boxShadow: AppShadows.subtle,
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              SizedBox(width: 36, child: Center(child: iconWidget)),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.gray900),
-                ),
-              ),
-              if (trailingWidget != null) trailingWidget!,
-            ],
-          ),
         ),
       ),
     );

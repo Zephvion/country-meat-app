@@ -123,10 +123,10 @@ void main() {
       expect(appState.rewardTier, equals('Silver'));
       expect(appState.nextTierPoints, equals(1));
 
-      // Test Gold tier threshold (500 - 999)
+      // Test Gold tier threshold (500 - 749)
       appState.rewardPoints = 500;
       expect(appState.rewardTier, equals('Gold'));
-      expect(appState.nextTierPoints, equals(500)); // 1000 - 500
+      expect(appState.nextTierPoints, equals(250)); // 750 - 500
 
       // Test Platinum tier threshold (>= 1000)
       appState.rewardPoints = 1000;

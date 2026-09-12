@@ -111,142 +111,362 @@ class _CustCategoriesScreenState extends State<CustCategoriesScreen> {
     return Scaffold(
       backgroundColor: AppColors.gray50,
       body: SafeArea(
-        child: Column(
-          children: [
-            // ── Top Bar Header ──────────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                boxShadow: AppShadows.subtle,
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: AppColors.gray100,
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      onPressed: () => widget.nav('home'),
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                          size: 16, color: AppColors.gray800),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final bool isDesktop = constraints.maxWidth >= 768;
+
+            return Column(
+              children: [
+                // ── Top Bar Header ──────────────────────────────────────────────
+                Container(
+                  padding: EdgeInsets.fromLTRB(isDesktop ? 24 : 16, 12, isDesktop ? 24 : 16, 12),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: AppShadows.subtle,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: const BoxDecoration(
+                          color: AppColors.gray100,
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          onPressed: () => widget.nav('back'),
+                          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                              size: 16, color: AppColors.gray800),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text(
+                              'Explore Categories',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.gray900,
+                              ),
+                            ),
+                            Text(
+                              'Farm-fresh meats & organic eggs',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: AppColors.gray500,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => widget.nav('search'),
+                        icon: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: AppColors.brandRedBg,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.search_rounded,
+                              size: 18, color: AppColors.brandRed),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Interactive Category Quick Tabs ───────────────────────────────
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: SizedBox(
+                    height: 36,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: EdgeInsets.symmetric(horizontal: isDesktop ? 24 : 16),
+                      children: [
+                        'All',
+                        'Poultry',
+                        'Red Meat',
+                        'Seafood',
+                      ].map((tab) {
+                        final isSelected = _selectedTab == tab;
+                        return GestureDetector(
+                          onTap: () => setState(() => _selectedTab = tab),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppColors.brandRed
+                                  : AppColors.gray100,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color:
+                                            AppColors.brandRed.withValues(alpha: 0.25),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Text(
+                              tab,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight:
+                                    isSelected ? FontWeight.w800 : FontWeight.w600,
+                                color: isSelected ? Colors.white : AppColors.gray700,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          'Explore Categories',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.gray900,
+                ),
+                const Divider(height: 1, color: AppColors.gray200),
+
+                // ── Main Category Content (Desktop 2-Column Grid vs Mobile List) ──
+                Expanded(
+                  child: isDesktop
+                      ? GridView.builder(
+                          padding: const EdgeInsets.fromLTRB(24, 20, 24, 30),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 1.45,
+                            crossAxisSpacing: 20,
+                            mainAxisSpacing: 20,
+                          ),
+                          itemCount: _filteredCats.length,
+                          itemBuilder: (ctx, i) {
+                            final cat = _filteredCats[i];
+                            return _CategoryDesktopCard(
+                              data: cat,
+                              onTap: () => widget.nav('listing', param: cat.id),
+                            );
+                          },
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 30),
+                          itemCount: _filteredCats.length,
+                          itemBuilder: (ctx, i) {
+                            final cat = _filteredCats[i];
+                            return _CategoryHeroCard(
+                              data: cat,
+                              onTap: () => widget.nav('listing', param: cat.id),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+// ─── E-COMMERCE DESKTOP CATEGORY CARD ─────────────────────────────────────────
+class _CategoryDesktopCard extends StatelessWidget {
+  final _CategoryData data;
+  final VoidCallback onTap;
+
+  const _CategoryDesktopCard({
+    required this.data,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.gray200, width: 1),
+        boxShadow: AppShadows.subtle,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top Image Area
+                Expanded(
+                  flex: 55,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.asset(
+                        data.img,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: AppColors.gray200,
+                          child: const Icon(Icons.kebab_dining,
+                              size: 48, color: AppColors.gray400),
+                        ),
+                      ),
+                      Positioned(
+                        top: 12,
+                        left: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: data.themeColor,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.25),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            data.badge,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.8,
+                            ),
                           ),
                         ),
-                        Text(
-                          'Farm-fresh meats & organic eggs',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            color: AppColors.gray500,
-                            fontWeight: FontWeight.w500,
+                      ),
+                      Positioned(
+                        top: 12,
+                        right: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.3)),
                           ),
+                          child: Text(
+                            data.itemCount,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Bottom Content Area
+                Expanded(
+                  flex: 45,
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              data.title,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.gray900,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              data.desc,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.gray600,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            RichText(
+                              text: TextSpan(
+                                children: [
+                                  const TextSpan(
+                                    text: 'Starts from ',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color: AppColors.gray500,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: data.priceStart,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w900,
+                                      color: AppColors.brandRed,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                              decoration: BoxDecoration(
+                                color: AppColors.brandRed,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.brandRed.withValues(alpha: 0.3),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: const [
+                                  Text(
+                                    'Explore Category',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  SizedBox(width: 4),
+                                  Icon(Icons.arrow_forward_rounded, size: 14, color: Colors.white),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => widget.nav('search'),
-                    icon: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: AppColors.brandRedBg,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.search_rounded,
-                          size: 18, color: AppColors.brandRed),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // ── Interactive Category Quick Tabs ───────────────────────────────
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: SizedBox(
-                height: 36,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  children: [
-                    'All',
-                    'Poultry',
-                    'Red Meat',
-                    'Seafood',
-                  ].map((tab) {
-                    final isSelected = _selectedTab == tab;
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedTab = tab),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.brandRed
-                              : AppColors.gray100,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color:
-                                        AppColors.brandRed.withValues(alpha: 0.25),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Text(
-                          tab,
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight:
-                                isSelected ? FontWeight.w800 : FontWeight.w600,
-                            color: isSelected ? Colors.white : AppColors.gray700,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
                 ),
-              ),
+              ],
             ),
-            const Divider(height: 1, color: AppColors.gray200),
-
-            // ── Main Category Cards List ─────────────────────────────────────
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 30),
-                itemCount: _filteredCats.length,
-                itemBuilder: (ctx, i) {
-                  final cat = _filteredCats[i];
-                  return _CategoryHeroCard(
-                    data: cat,
-                    onTap: () => widget.nav('listing', param: cat.id),
-                  );
-                },
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -504,7 +724,6 @@ class CustListingScreen extends StatefulWidget {
 class _CustListingScreenState extends State<CustListingScreen> {
   String _sortBy = 'popular';
   String? _genderFilter;
-  bool _isGridView = false;
 
   @override
   Widget build(BuildContext context) {
@@ -537,160 +756,146 @@ class _CustListingScreenState extends State<CustListingScreen> {
     return Scaffold(
       backgroundColor: AppColors.gray50,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Navigation Header ─────────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.fromLTRB(12, 10, 16, 10),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                boxShadow: AppShadows.subtle,
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => widget.nav('categories'),
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                        size: 18, color: AppColors.gray800),
-                  ),
-                  Expanded(
-                    child: Text(
-                      catName,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.gray900,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => widget.nav('search'),
-                    icon: const Icon(Icons.search_rounded,
-                        size: 22, color: AppColors.gray700),
-                  ),
-                  IconButton(
-                    onPressed: () => setState(() => _isGridView = !_isGridView),
-                    icon: Icon(
-                      _isGridView
-                          ? Icons.view_list_rounded
-                          : Icons.grid_view_rounded,
-                      size: 22,
-                      color: AppColors.brandRed,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final bool isDesktop = constraints.maxWidth >= 768;
+            final double width = constraints.maxWidth;
 
-            // ── Sort & Filter Pills Bar ───────────────────────────────────────
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: SizedBox(
-                height: 36,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  children: [
-                    _FilterChip(
-                      label: 'Popular',
-                      selected: _sortBy == 'popular',
-                      onTap: () => setState(() => _sortBy = 'popular'),
-                    ),
-                    _FilterChip(
-                      label: 'Price: Low to High',
-                      selected: _sortBy == 'price_asc',
-                      onTap: () => setState(() => _sortBy = 'price_asc'),
-                    ),
-                    _FilterChip(
-                      label: 'Price: High to Low',
-                      selected: _sortBy == 'price_desc',
-                      onTap: () => setState(() => _sortBy = 'price_desc'),
-                    ),
-                    if (widget.category == 'chicken') ...[
-                      _FilterChip(
-                        label: 'Rooster Cut',
-                        selected: _genderFilter == 'Rooster',
-                        onTap: () => setState(() => _genderFilter =
-                            _genderFilter == 'Rooster' ? null : 'Rooster'),
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Navigation Header ─────────────────────────────────────────────
+                Container(
+                  padding: EdgeInsets.fromLTRB(isDesktop ? 24 : 12, 10, isDesktop ? 24 : 16, 10),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: AppShadows.subtle,
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => widget.nav('back'),
+                        icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                            size: 18, color: AppColors.gray800),
                       ),
-                      _FilterChip(
-                        label: 'Hen Cut',
-                        selected: _genderFilter == 'Hen',
-                        onTap: () => setState(() => _genderFilter =
-                            _genderFilter == 'Hen' ? null : 'Hen'),
+                      Expanded(
+                        child: Text(
+                          catName,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.gray900,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => widget.nav('search'),
+                        icon: const Icon(Icons.search_rounded,
+                            size: 22, color: AppColors.gray700),
                       ),
                     ],
-                  ],
+                  ),
                 ),
-              ),
-            ),
-            const Divider(height: 1, color: AppColors.gray200),
 
-            // ── Product Count & List/Grid ────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${filtered.length} Fresh Cuts Available',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.gray700,
-                      fontWeight: FontWeight.w700,
+                // ── Sort & Filter Pills Bar ───────────────────────────────────────
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: SizedBox(
+                    height: 36,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: EdgeInsets.symmetric(horizontal: isDesktop ? 24 : 16),
+                      children: [
+                        _FilterChip(
+                          label: 'Popular',
+                          selected: _sortBy == 'popular',
+                          onTap: () => setState(() => _sortBy = 'popular'),
+                        ),
+                        _FilterChip(
+                          label: 'Price: Low to High',
+                          selected: _sortBy == 'price_asc',
+                          onTap: () => setState(() => _sortBy = 'price_asc'),
+                        ),
+                        _FilterChip(
+                          label: 'Price: High to Low',
+                          selected: _sortBy == 'price_desc',
+                          onTap: () => setState(() => _sortBy = 'price_desc'),
+                        ),
+                        if (widget.category == 'chicken') ...[
+                          _FilterChip(
+                            label: 'Rooster Cut',
+                            selected: _genderFilter == 'Rooster',
+                            onTap: () => setState(() => _genderFilter =
+                                _genderFilter == 'Rooster' ? null : 'Rooster'),
+                          ),
+                          _FilterChip(
+                            label: 'Hen Cut',
+                            selected: _genderFilter == 'Hen',
+                            onTap: () => setState(() => _genderFilter =
+                                _genderFilter == 'Hen' ? null : 'Hen'),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  const Text(
-                    '⚡ Express 90-Min Delivery',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      color: AppColors.success,
-                      fontWeight: FontWeight.w700,
+                ),
+                const Divider(height: 1, color: AppColors.gray200),
+
+                // ── Product Count & List/Grid ────────────────────────────────────
+                Padding(
+                  padding: EdgeInsets.fromLTRB(isDesktop ? 24 : 16, 12, isDesktop ? 24 : 16, 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '${filtered.length} Fresh Cuts Available',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.gray700,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ],
-              ),
-            ),
+                ),
 
-            Expanded(
-              child: _isGridView
-                  ? GridView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 0.68,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                      ),
-                      itemCount: filtered.length,
-                      itemBuilder: (ctx, i) => ProductCardVertical(
-                        p: filtered[i],
-                        onTap: () => widget.nav('detail', param: filtered[i].id),
-                        onAdd: () {
-                          appState.addToCart(filtered[i]);
-                          showAppToast(
-                              context, '${filtered[i].name} added to cart! 🛒');
-                        },
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                      itemCount: filtered.length,
-                      itemBuilder: (ctx, i) => ProductCardVertical(
-                        p: filtered[i],
-                        onTap: () => widget.nav('detail', param: filtered[i].id),
-                        onAdd: () {
-                          appState.addToCart(filtered[i]);
-                          showAppToast(
-                              context, '${filtered[i].name} added to cart! 🛒');
-                        },
-                      ),
-                    ),
-            ),
-          ],
+                Expanded(
+                  child: isDesktop
+                      ? GridView.builder(
+                          padding: const EdgeInsets.fromLTRB(24, 8, 24, 30),
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: width >= 1600 ? 5 : (width >= 1100 ? 4 : 3),
+                            childAspectRatio: width >= 1400 ? 0.78 : (width >= 1100 ? 0.74 : 0.71),
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                          ),
+                          itemCount: filtered.length,
+                          itemBuilder: (ctx, i) => ProductCardGrid(
+                            p: filtered[i],
+                            onTap: () => widget.nav('detail', param: filtered[i].id),
+                            onAdd: () {
+                              appState.addToCart(filtered[i]);
+                              showAppToast(
+                                  context, '${filtered[i].name} added to cart! 🛒');
+                            },
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                          itemCount: filtered.length,
+                          itemBuilder: (ctx, i) => ProductCardVertical(
+                            p: filtered[i],
+                            onTap: () => widget.nav('detail', param: filtered[i].id),
+                            onAdd: () {
+                              appState.addToCart(filtered[i]);
+                              showAppToast(
+                                  context, '${filtered[i].name} added to cart! 🛒');
+                            },
+                          ),
+                        ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

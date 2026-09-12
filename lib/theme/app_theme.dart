@@ -225,3 +225,25 @@ void showAppToast(BuildContext context, String message) {
     ),
   );
 }
+
+/// ─── RESPONSIVE BREAKPOINTS ───────────────────────────────────────────────────
+class AppBreakpoints {
+  static const double mobileMax = 767.0;
+  static const double tabletMin = 768.0;
+  static const double tabletMax = 1023.0;
+  static const double desktopMin = 1024.0;
+  static const double maxContentWidth = 1320.0;
+  static const double maxTabletContentWidth = 880.0;
+
+  static bool isMobile(BuildContext context) =>
+      MediaQuery.of(context).size.width < tabletMin;
+
+  static bool isTablet(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return w >= tabletMin && w < desktopMin;
+  }
+
+  static bool isDesktop(BuildContext context) =>
+      MediaQuery.of(context).size.width >= desktopMin;
+}
+

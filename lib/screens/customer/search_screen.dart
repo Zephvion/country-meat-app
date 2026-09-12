@@ -116,7 +116,7 @@ class _CustSearchScreenState extends State<CustSearchScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () => widget.nav('home'),
+                    onPressed: () => widget.nav('back'),
                     icon: const Icon(Icons.arrow_back_ios_new_rounded,
                         size: 18, color: AppColors.gray800),
                   ),
@@ -482,45 +482,78 @@ class _CustSearchScreenState extends State<CustSearchScreen> {
                                                 '₹${p.mrp}',
                                                 style: const TextStyle(
                                                   fontSize: 12,
-                                                  decoration: TextDecoration
-                                                      .lineThrough,
+                                                  decoration: TextDecoration.lineThrough,
                                                   color: AppColors.gray400,
                                                 ),
                                               ),
                                             ],
                                             const Spacer(),
-                                            ElevatedButton(
-                                              onPressed: () {
-                                                appState.addToCart(p);
-                                                showAppToast(context,
-                                                    '${p.name} added to cart! 🛒');
-                                              },
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor:
-                                                    AppColors.brandRed,
-                                                foregroundColor: Colors.white,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 14,
-                                                        vertical: 6),
-                                                minimumSize: Size.zero,
-                                                tapTargetSize:
-                                                    MaterialTapTargetSize
-                                                        .shrinkWrap,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                elevation: 0,
-                                              ),
-                                              child: const Text(
-                                                '+ ADD',
-                                                style: TextStyle(
-                                                  fontSize: 11.5,
-                                                  fontWeight: FontWeight.w800,
-                                                ),
-                                              ),
-                                            ),
+                                            appState.getProductQuantity(p.id) > 0
+                                                ? Container(
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(0xFFFEF2F2),
+                                                      border: Border.all(color: AppColors.brandRed, width: 1.2),
+                                                      borderRadius: BorderRadius.circular(AppRadius.full),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        InkWell(
+                                                          onTap: () => appState.decrementProductQuantity(p.id),
+                                                          borderRadius: BorderRadius.circular(AppRadius.full),
+                                                          child: const Padding(
+                                                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                            child: Icon(Icons.remove, size: 14, color: AppColors.brandRed),
+                                                          ),
+                                                        ),
+                                                        Text(
+                                                          '${appState.getProductQuantity(p.id)}',
+                                                          style: const TextStyle(
+                                                              fontSize: 12.5, fontWeight: FontWeight.w800, color: AppColors.brandRed),
+                                                        ),
+                                                        InkWell(
+                                                          onTap: () => appState.incrementProductQuantity(p),
+                                                          borderRadius: BorderRadius.circular(AppRadius.full),
+                                                          child: const Padding(
+                                                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                            child: Icon(Icons.add, size: 14, color: AppColors.brandRed),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  )
+                                                : ElevatedButton(
+                                                    onPressed: () {
+                                                      appState.addToCart(p);
+                                                      showAppToast(context,
+                                                          '${p.name} added to cart! 🛒');
+                                                    },
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor:
+                                                          AppColors.brandRed,
+                                                      foregroundColor: Colors.white,
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                              horizontal: 14,
+                                                              vertical: 6),
+                                                      minimumSize: Size.zero,
+                                                      tapTargetSize:
+                                                          MaterialTapTargetSize
+                                                              .shrinkWrap,
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(8),
+                                                      ),
+                                                      elevation: 0,
+                                                    ),
+                                                    child: const Text(
+                                                      '+ ADD',
+                                                      style: TextStyle(
+                                                        fontSize: 11.5,
+                                                        fontWeight: FontWeight.w800,
+                                                      ),
+                                                    ),
+                                                  ),
                                           ],
                                         ),
                                       ],

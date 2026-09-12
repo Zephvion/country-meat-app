@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../models/product.dart';
+import '../../../state/app_state.dart';
 import '../../../theme/app_theme.dart';
 
 // ─── HORIZONTAL CARD (used in Home carousels) ─────────────────────────────────
@@ -16,6 +18,9 @@ class ProductCardHorizontal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final int qty = appState.getProductQuantity(p.id);
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -75,19 +80,266 @@ class ProductCardHorizontal extends StatelessWidget {
                                 decoration: TextDecoration.lineThrough,
                                 fontSize: 10)),
                       ]),
-                      GestureDetector(
-                        onTap: onAdd,
-                        child: Container(
-                          width: 30, height: 30,
-                          decoration: const BoxDecoration(
-                              color: AppColors.brandRed, shape: BoxShape.circle),
-                          alignment: Alignment.center,
-                          child: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
-                        ),
-                      ),
+                      qty > 0
+                          ? Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF2F2),
+                                border: Border.all(color: AppColors.brandRed, width: 1.2),
+                                borderRadius: BorderRadius.circular(AppRadius.full),
+                              ),
+                              child: Row(
+                                children: [
+                                  InkWell(
+                                    onTap: () => appState.decrementProductQuantity(p.id),
+                                    borderRadius: BorderRadius.circular(AppRadius.full),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(4),
+                                      child: Icon(Icons.remove, size: 14, color: AppColors.brandRed),
+                                    ),
+                                  ),
+                                  Text(
+                                    '$qty',
+                                    style: const TextStyle(
+                                        fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.brandRed),
+                                  ),
+                                  InkWell(
+                                    onTap: () => appState.incrementProductQuantity(p),
+                                    borderRadius: BorderRadius.circular(AppRadius.full),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(4),
+                                      child: Icon(Icons.add, size: 14, color: AppColors.brandRed),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : GestureDetector(
+                              onTap: onAdd,
+                              child: Container(
+                                width: 30,
+                                height: 30,
+                                decoration: const BoxDecoration(
+                                    color: AppColors.brandRed, shape: BoxShape.circle),
+                                alignment: Alignment.center,
+                                child: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                              ),
+                            ),
                     ],
                   ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── GRID / DESKTOP CARD (used in Desktop Best Sellers & Grid views) ─────────
+class ProductCardGrid extends StatelessWidget {
+  final Product p;
+  final VoidCallback onTap;
+  final VoidCallback onAdd;
+
+  const ProductCardGrid({
+    super.key,
+    required this.p,
+    required this.onTap,
+    required this.onAdd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final int qty = appState.getProductQuantity(p.id);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.gray200, width: 1),
+          boxShadow: AppShadows.subtle,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Image
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
+              child: AspectRatio(
+                aspectRatio: 1.35,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: Image.asset(
+                        p.img,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    if (p.discount > 0)
+                      Positioned(
+                        top: 10,
+                        left: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.success,
+                            borderRadius: BorderRadius.circular(AppRadius.full),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.12),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            '${p.discount}% OFF',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Card Body Content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          p.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14.5,
+                            color: AppColors.gray900,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          p.weight,
+                          style: const TextStyle(
+                            color: AppColors.gray500,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Price + Add Control Row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.baseline,
+                              textBaseline: TextBaseline.alphabetic,
+                              children: [
+                                Text(
+                                  '₹${p.price}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 16,
+                                    color: AppColors.gray900,
+                                  ),
+                                ),
+                                if (p.mrp > p.price) ...[
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '₹${p.mrp}',
+                                    style: const TextStyle(
+                                      color: AppColors.gray400,
+                                      decoration: TextDecoration.lineThrough,
+                                      fontSize: 11.5,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                        qty > 0
+                            ? Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEF2F2),
+                                  border: Border.all(color: AppColors.brandRed, width: 1.5),
+                                  borderRadius: BorderRadius.circular(AppRadius.full),
+                                ),
+                                child: Row(
+                                  children: [
+                                    InkWell(
+                                      onTap: () => appState.decrementProductQuantity(p.id),
+                                      borderRadius: BorderRadius.circular(AppRadius.full),
+                                      child: const Padding(
+                                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                        child: Icon(Icons.remove, size: 14, color: AppColors.brandRed),
+                                      ),
+                                    ),
+                                    Text(
+                                      '$qty',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.brandRed,
+                                      ),
+                                    ),
+                                    InkWell(
+                                      onTap: () => appState.incrementProductQuantity(p),
+                                      borderRadius: BorderRadius.circular(AppRadius.full),
+                                      child: const Padding(
+                                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                        child: Icon(Icons.add, size: 14, color: AppColors.brandRed),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : ElevatedButton(
+                                onPressed: onAdd,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.brandRed,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: const Text(
+                                  '+ ADD',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -111,6 +363,9 @@ class ProductCardVertical extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final int qty = appState.getProductQuantity(p.id);
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -184,16 +439,50 @@ class ProductCardVertical extends StatelessWidget {
                       ]),
                     ),
                     const SizedBox(width: 4),
-                    ElevatedButton(
-                      onPressed: onAdd,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                      ),
-                      child: const Text('+ Add'),
-                    ),
+                    qty > 0
+                        ? Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF2F2),
+                              border: Border.all(color: AppColors.brandRed, width: 1.2),
+                              borderRadius: BorderRadius.circular(AppRadius.full),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                InkWell(
+                                  onTap: () => appState.decrementProductQuantity(p.id),
+                                  borderRadius: BorderRadius.circular(AppRadius.full),
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    child: Icon(Icons.remove, size: 14, color: AppColors.brandRed),
+                                  ),
+                                ),
+                                Text(
+                                  '$qty',
+                                  style: const TextStyle(
+                                      fontSize: 12.5, fontWeight: FontWeight.w800, color: AppColors.brandRed),
+                                ),
+                                InkWell(
+                                  onTap: () => appState.incrementProductQuantity(p),
+                                  borderRadius: BorderRadius.circular(AppRadius.full),
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    child: Icon(Icons.add, size: 14, color: AppColors.brandRed),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ElevatedButton(
+                            onPressed: onAdd,
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                            ),
+                            child: const Text('+ Add'),
+                          ),
                   ]),
                 ],
               ),
@@ -205,200 +494,4 @@ class ProductCardVertical extends StatelessWidget {
   }
 }
 
-// ─── ADD TO CART BOTTOM SHEET ─────────────────────────────────────────────────
-class AddToCartSheet extends StatefulWidget {
-  final Product product;
-  final void Function(Product p, String cut, String gender, String slot) onAdd;
-  const AddToCartSheet({super.key, required this.product, required this.onAdd});
 
-  @override
-  State<AddToCartSheet> createState() => _AddToCartSheetState();
-}
-
-class _AddToCartSheetState extends State<AddToCartSheet> {
-  String _cut = 'Medium';
-  late String _gender;
-  String _slot = '6AM–9AM';
-  int _qty = 1;
-
-  static const _cuts = ['Small', 'Medium', 'Large', 'Full'];
-  static const _slots = ['6AM–9AM', '9AM–12PM'];
-
-  @override
-  void initState() {
-    super.initState();
-    _gender = widget.product.gender == 'Both' ? 'Rooster' : widget.product.gender;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final p = widget.product;
-    return Container(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-      ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Handle bar
-          Center(
-            child: Container(
-              width: 40, height: 4,
-              margin: const EdgeInsets.only(top: 12, bottom: 16),
-              decoration: BoxDecoration(
-                color: AppColors.gray200,
-                borderRadius: BorderRadius.circular(AppRadius.full),
-              ),
-            ),
-          ),
-          // Product header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadius.base),
-                child: Image.asset(p.img, height: 60, width: 60, fit: BoxFit.cover),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(p.name,
-                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                  Text(p.weight, style: const TextStyle(color: AppColors.gray400, fontSize: 12)),
-                ]),
-              ),
-              Text('₹${p.price * _qty}',
-                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: AppColors.brandRed)),
-            ]),
-          ),
-          const SizedBox(height: 16),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Cut selection (only for chicken and mutton)
-                if (p.category == 'chicken' || p.category == 'mutton') ...[
-                  _sheetLabel('Cut Preference'),
-                  _ChipGroup(
-                    items: p.category == 'mutton'
-                        ? const ['Curry Cut', 'Biryani Cut', 'Mutton Chops', 'Ribs']
-                        : _cuts,
-                    selected: _cut,
-                    onSelected: (v) => setState(() => _cut = v),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                // Gender (only for chicken)
-                if (p.category == 'chicken' && p.gender == 'Both') ...[
-                  _sheetLabel('Gender'),
-                  _ChipGroup(
-                    items: const ['Rooster', 'Hen'],
-                    selected: _gender,
-                    onSelected: (v) => setState(() => _gender = v),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                // Slot
-                _sheetLabel('Delivery Slot'),
-                _ChipGroup(
-                  items: _slots,
-                  selected: _slot,
-                  onSelected: (v) => setState(() => _slot = v),
-                ),
-                const SizedBox(height: 16),
-                // Qty + Add button
-                Row(children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.gray200),
-                      borderRadius: BorderRadius.circular(AppRadius.full),
-                    ),
-                    child: Row(children: [
-                      _qtyBtn(Icons.remove, () { if (_qty > 1) setState(() => _qty--); }),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text('$_qty',
-                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
-                      ),
-                      _qtyBtn(Icons.add, () => setState(() => _qty++)),
-                    ]),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        for (int i = 0; i < _qty; i++) {
-                          widget.onAdd(p, _cut, _gender, _slot);
-                        }
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                      ),
-                      child: const Text('Add to Cart 🛒', style: TextStyle(fontSize: 15)),
-                    ),
-                  ),
-                ]),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sheetLabel(String label) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(label,
-        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: AppColors.gray500)),
-  );
-
-  Widget _qtyBtn(IconData icon, VoidCallback onTap) => Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.full),
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: Icon(icon, size: 18, color: AppColors.gray700),
-          ),
-        ),
-      );
-}
-
-class _ChipGroup extends StatelessWidget {
-  final List<String> items;
-  final String selected;
-  final ValueChanged<String> onSelected;
-  const _ChipGroup({required this.items, required this.selected, required this.onSelected});
-
-  @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: 8,
-    runSpacing: 8,
-    children: items.map((item) => GestureDetector(
-      onTap: () => onSelected(item),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: selected == item ? AppColors.brandRed : AppColors.gray100,
-          borderRadius: BorderRadius.circular(AppRadius.full),
-        ),
-        child: Text(item,
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              color: selected == item ? Colors.white : AppColors.gray600,
-            )),
-      ),
-    )).toList(),
-  );
-}

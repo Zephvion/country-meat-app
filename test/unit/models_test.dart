@@ -9,7 +9,7 @@ void main() {
         id: 'p1',
         name: 'Kadaknath',
         sub: 'Black Chicken',
-        img: 'assets/images/kadaknath_real.jpg',
+        img: 'assets/images/k1.jpg',
         tags: ['Organic', 'Rare'],
         weight: '800g',
         price: 1300,

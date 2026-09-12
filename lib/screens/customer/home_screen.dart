@@ -33,6 +33,16 @@ class _CustHomeScreenState extends State<CustHomeScreen> {
     'Order Tonight. Fresh Meat by 6AM.',
   ];
 
+  static const _whyChooseUsImages = [
+    'assets/images/whyCooseUs/ogCountry.png',
+    'assets/images/whyCooseUs/free-range.png',
+    'assets/images/whyCooseUs/natualfeed.png',
+    'assets/images/whyCooseUs/antiboitic.png',
+    'assets/images/whyCooseUs/naturally.png',
+    'assets/images/whyCooseUs/farmers.png',
+    'assets/images/whyCooseUs/delivery.png',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -57,157 +67,146 @@ class _CustHomeScreenState extends State<CustHomeScreen> {
     final appState = context.watch<AppState>();
     final bestSellers = kProducts['chicken']!.take(4).toList();
 
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
-        // ── Top Bar ─────────────────────────────────────────────────────────
-        Container(
-          color: AppColors.white,
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _showLocationPickerModal(context, appState),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Delivering to',
-                          style: TextStyle(
-                              fontSize: 10,
-                              color: AppColors.gray400,
-                              fontWeight: FontWeight.w500)),
-                      Row(
-                        children: [
-                          const Icon(Icons.location_on,
-                              size: 14, color: AppColors.brandRed),
-                          const SizedBox(width: 3),
-                          Flexible(
-                            child: Text(
-                              appState.defaultAddress.split(',').first,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w800, fontSize: 14),
-                            ),
-                          ),
-                          const Icon(Icons.keyboard_arrow_down_rounded,
-                              size: 18, color: AppColors.gray400),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: const [
-                  Text('Today 6AM–9AM',
-                      style: TextStyle(fontSize: 10, color: AppColors.gray400)),
-                  Row(
-                    children: [
-                      Icon(Icons.circle, size: 8, color: AppColors.success),
-                      SizedBox(width: 4),
-                      Text('Slots Open',
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.success,
-                              fontWeight: FontWeight.w700)),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool isDesktopOrTablet = constraints.maxWidth >= 768;
 
-        // ── Search Bar ────────────────────────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-          child: GestureDetector(
-            onTap: () => widget.nav('search'),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-              decoration: BoxDecoration(
-                color: AppColors.gray100,
-                borderRadius: BorderRadius.circular(AppRadius.full),
-              ),
-              child: Row(
-                children: const [
-                  Icon(Icons.search_rounded,
-                      size: 20, color: AppColors.brandRed),
-                  SizedBox(width: 10),
-                  Text('Search for meats and products...',
-                      style:
-                          TextStyle(color: AppColors.gray500, fontSize: 13.5, fontWeight: FontWeight.w500)),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // ── Banner Carousel (Exact native image aspect ratio 3.1:1, zero cropping, zero black bars) ─────
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              boxShadow: AppShadows.card,
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              clipBehavior: Clip.antiAlias,
-              child: AspectRatio(
-                aspectRatio: 3.1, // Matches native banner image aspect ratio
-                child: Stack(
+        return ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            if (!isDesktopOrTablet) ...[
+              // ── Mobile Top Bar ─────────────────────────────────────────────
+              Container(
+                color: AppColors.white,
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                child: Row(
                   children: [
-                    PageView.builder(
-                      controller: _bannerCtrl,
-                      itemCount: _banners.length,
-                      onPageChanged: (i) => setState(() => _bannerIndex = i),
-                      itemBuilder: (_, i) => Image.asset(
-                        _banners[i],
-                        fit: BoxFit.fill, // Fits container perfectly without cropping left text or adding black bars
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => _showLocationPickerModal(context, appState, widget.nav),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Delivering to',
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.gray400,
+                                    fontWeight: FontWeight.w500)),
+                            Row(
+                              children: [
+                                const Icon(Icons.location_on,
+                                    size: 14, color: AppColors.brandRed),
+                                const SizedBox(width: 3),
+                                Flexible(
+                                  child: Text(
+                                    appState.defaultAddress.split(',').first,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w800, fontSize: 14),
+                                  ),
+                                ),
+                                const Icon(Icons.keyboard_arrow_down_rounded,
+                                    size: 18, color: AppColors.gray400),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    Positioned(
-                      bottom: 8,
-                      right: 10,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.55),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: AnimatedSmoothIndicator(
-                          activeIndex: _bannerIndex,
-                          count: _banners.length,
-                          effect: const WormEffect(
-                            dotHeight: 5,
-                            dotWidth: 5,
-                            activeDotColor: Colors.white,
-                            dotColor: Colors.white38,
-                          ),
-                        ),
-                      ),
+                    Builder(
+                      builder: (context) {
+                        final openSlot = AppState.getCurrentlyOpenSlot();
+                        final isOpen = openSlot != null;
+                        final now = DateTime.now();
+                        final currentMinutes = now.hour * 60 + now.minute;
+                        final String slotTimeText;
+                        if (isOpen) {
+                          slotTimeText = 'Today $openSlot';
+                        } else if (currentMinutes < 6 * 60) {
+                          slotTimeText = 'Today 6AM–9AM';
+                        } else {
+                          slotTimeText = 'Tomorrow 6AM–9AM';
+                        }
+
+                        final String statusText = isOpen
+                            ? 'Slot Open'
+                            : (currentMinutes < 6 * 60 ? 'Opens 6 AM' : 'Slots Closed');
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              slotTimeText,
+                              style: const TextStyle(
+                                  fontSize: 10, color: AppColors.gray400),
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.circle,
+                                  size: 8,
+                                  color: isOpen
+                                      ? AppColors.success
+                                      : AppColors.gray400,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  statusText,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isOpen
+                                        ? AppColors.success
+                                        : AppColors.gray500,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),
               ),
-            ),
-          ),
-        ),
 
-        // ── Categories ────────────────────────────────────────────────────────
-        _SectionHeader(
-            title: 'Shop By Category',
-            onSeeAll: () => widget.nav('categories')),
-        SizedBox(
-          height: 125,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            children: [
+              // ── Mobile Search Bar ──────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                child: GestureDetector(
+                  onTap: () => widget.nav('search'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                    decoration: BoxDecoration(
+                      color: AppColors.gray100,
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                    ),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.search_rounded,
+                            size: 20, color: AppColors.brandRed),
+                        SizedBox(width: 10),
+                        Text('Search for meats and products...',
+                            style: TextStyle(
+                                color: AppColors.gray500,
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ] else ...[
+              const SizedBox(height: 16),
+            ],
+
+            // ── Banner & Category Layout ─────────────────────────────────────────
+            LayoutBuilder(
+              builder: (context, innerConstraints) {
+            final isDesktopOrTablet = constraints.maxWidth >= 768;
+
+            final categories = [
               _CatCard(
                   img: 'assets/images/cat_chicken.jpg',
                   label: 'Country Chicken',
@@ -233,13 +232,117 @@ class _CustHomeScreenState extends State<CustHomeScreen> {
                   tag: 'Catch',
                   onTap: () => widget.nav('listing', param: 'seafood')),
               _CatCard(
-                  img: 'assets/images/kadaknath_real.jpg',
+                  img: 'assets/images/k1.jpg',
                   label: 'Kadaknath',
                   itemCount: '3 Items',
                   tag: 'Rare',
                   onTap: () => widget.nav('search', param: 'Kadaknath')),
-            ],
-          ),
+            ];
+
+            Widget bannerWidget(double horizontalPadding) {
+              return Padding(
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    boxShadow: AppShadows.card,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    clipBehavior: Clip.antiAlias,
+                    child: AspectRatio(
+                      aspectRatio: 3.1,
+                      child: Stack(
+                        children: [
+                          PageView.builder(
+                            controller: _bannerCtrl,
+                            itemCount: _banners.length,
+                            onPageChanged: (i) => setState(() => _bannerIndex = i),
+                            itemBuilder: (_, i) => Image.asset(
+                              _banners[i],
+                              fit: BoxFit.fill,
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 8,
+                            right: 10,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.55),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: AnimatedSmoothIndicator(
+                                activeIndex: _bannerIndex,
+                                count: _banners.length,
+                                effect: const WormEffect(
+                                  dotHeight: 5,
+                                  dotWidth: 5,
+                                  activeDotColor: Colors.white,
+                                  dotColor: Colors.white38,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            if (isDesktopOrTablet) {
+              return Column(
+                children: [
+                  // ── 1. Independent Hero Banner ──────────────────────────────────
+                  bannerWidget(24),
+
+                  const SizedBox(height: 24),
+
+                  // ── 2. Shop By Category Heading (ABOVE category circles) ────────
+                  _SectionHeader(
+                    title: 'Shop By Category',
+                    onSeeAll: () => widget.nav('categories'),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // ── 3. Centered Category Row (underneath heading row) ────────────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Wrap(
+                      spacing: 24,
+                      runSpacing: 16,
+                      alignment: WrapAlignment.center,
+                      children: categories,
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+                ],
+              );
+            }
+
+            return Column(
+              children: [
+                bannerWidget(16),
+                _SectionHeader(
+                  title: 'Shop By Category',
+                  onSeeAll: () => widget.nav('categories'),
+                ),
+                SizedBox(
+                  height: 125,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    children: categories,
+                  ),
+                ),
+              ],
+            );
+          },
         ),
 
         // ── Special Offer Strip ───────────────────────────────────────────────
@@ -294,134 +397,198 @@ class _CustHomeScreenState extends State<CustHomeScreen> {
           ),
         ),
 
-        // ── Best Sellers ─────────────────────────────────────────────────────
-        _SectionHeader(
-            title: 'Best Sellers',
-            onSeeAll: () => widget.nav('listing', param: 'chicken')),
-        SizedBox(
-          height: 220,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            children: bestSellers
-                .map((p) => ProductCardHorizontal(
-                      p: p,
-                      onTap: () => widget.nav('detail', param: p.id),
-                      onAdd: () {
-                        appState.addToCart(p);
-                        showAppToast(context, '${p.name} added to cart! 🛒');
-                      },
-                    ))
-                .toList(),
-          ),
-        ),
+        // ── Best Sellers & Kadaknath Highlight ────────────────────────────────
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final bool isDesktopOrTablet = constraints.maxWidth >= 768;
+            final double width = constraints.maxWidth;
 
-        // ── Why Country Meat ─────────────────────────────────────────────────
-        Container(
-          margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: AppColors.brandRedBg,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: const Color(0xFFFFDADA)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Why Country Meat? 🐓',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                      color: AppColors.brandRedDark)),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _WhyChip('✓ Antibiotic Residue Free'),
-                  _WhyChip('✓ 100% Natural Growth'),
-                  _WhyChip('✓ Open Farm Raised'),
-                  _WhyChip('✓ Free-Range Certified'),
-                  _WhyChip('✓ No Hormones'),
-                  _WhyChip('✓ Dawn Delivery'),
-                ],
-              ),
-            ],
-          ),
-        ),
-
-        // ── Kadaknath Highlight ───────────────────────────────────────────────
-        GestureDetector(
-          onTap: () => widget.nav('detail', param: 'kadaknath'),
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            height: 150,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              boxShadow: AppShadows.card,
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.asset('assets/images/kadaknath.jpg', fit: BoxFit.cover),
-                  Container(
-                    decoration:
-                        const BoxDecoration(gradient: AppGradients.heroOverlay),
-                  ),
-                  Positioned(
-                    left: 16,
-                    bottom: 16,
-                    right: 80,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
+            final Widget kadaknathBanner = GestureDetector(
+              onTap: () => widget.nav('detail', param: 'kadaknath'),
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                height: 150,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  boxShadow: AppShadows.card,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.asset('assets/images/kadaknath.jpg', fit: BoxFit.cover),
+                      Container(
+                        decoration:
+                            const BoxDecoration(gradient: AppGradients.heroOverlay),
+                      ),
+                      Positioned(
+                        left: 16,
+                        bottom: 16,
+                        right: 80,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.tagNutritious,
+                                borderRadius: BorderRadius.circular(AppRadius.full),
+                              ),
+                              child: const Text('RARE BREED',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800)),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text('Kadaknath\nCountry Chicken',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 17,
+                                    height: 1.2)),
+                          ],
+                        ),
+                      ),
+                      Positioned(
+                        right: 16,
+                        bottom: 16,
+                        child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                              horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: AppColors.tagNutritious,
+                            color: AppColors.brandRed,
                             borderRadius: BorderRadius.circular(AppRadius.full),
                           ),
-                          child: const Text('RARE BREED',
+                          child: const Text('Order →',
                               style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w800)),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12)),
                         ),
-                        const SizedBox(height: 6),
-                        const Text('Kadaknath\nCountry Chicken',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 17,
-                                height: 1.2)),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    right: 16,
-                    bottom: 16,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.brandRed,
-                        borderRadius: BorderRadius.circular(AppRadius.full),
                       ),
-                      child: const Text('Order →',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ),
+            );
+
+            if (isDesktopOrTablet) {
+              final int cols = width >= 1800 ? 6 : (width >= 1400 ? 5 : (width >= 1000 ? 4 : 3));
+              final double ratio = width >= 1400 ? 0.78 : (width >= 1000 ? 0.74 : 0.71);
+
+              return Column(
+                children: [
+                  _SectionHeader(
+                    title: 'Best Sellers',
+                    onSeeAll: () => widget.nav('listing', param: 'chicken'),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: cols,
+                        childAspectRatio: ratio,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                      ),
+                      itemCount: bestSellers.length,
+                      itemBuilder: (ctx, i) => ProductCardGrid(
+                        p: bestSellers[i],
+                        onTap: () => widget.nav('detail', param: bestSellers[i].id),
+                        onAdd: () {
+                          appState.addToCart(bestSellers[i]);
+                          showAppToast(context, '${bestSellers[i].name} added to cart! 🛒');
+                        },
+                      ),
                     ),
                   ),
+                  // Kadaknath section is omitted on Web/Desktop so lower content moves up cleanly
                 ],
-              ),
-            ),
-          ),
+              );
+            }
+
+            return Column(
+              children: [
+                _SectionHeader(
+                  title: 'Best Sellers',
+                  onSeeAll: () => widget.nav('listing', param: 'chicken'),
+                ),
+                SizedBox(
+                  height: 220,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    children: bestSellers
+                        .map((p) => ProductCardHorizontal(
+                              p: p,
+                              onTap: () => widget.nav('detail', param: p.id),
+                              onAdd: () {
+                                appState.addToCart(p);
+                                showAppToast(context, '${p.name} added to cart! 🛒');
+                              },
+                            ))
+                        .toList(),
+                  ),
+                ),
+                kadaknathBanner,
+              ],
+            );
+          },
         ),
+
+        // ── Why Choose Us? ───────────────────────────────────────────────────
+        const _SectionHeader(title: 'Why Choose Us?'),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isDesktop = constraints.maxWidth >= 768;
+            final double horizontalPadding = isDesktop ? 24.0 : 16.0;
+            final double cardWidth = isDesktop ? 250.0 : 275.0;
+            final double gap = isDesktop ? 16.0 : 12.0;
+
+            return SizedBox(
+              height: 180,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                itemCount: _whyChooseUsImages.length,
+                itemBuilder: (context, index) {
+                  final imgPath = _whyChooseUsImages[index];
+                  return Container(
+                    width: cardWidth,
+                    margin: EdgeInsets.only(right: index == _whyChooseUsImages.length - 1 ? 0 : gap),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(color: AppColors.gray200, width: 1),
+                      boxShadow: AppShadows.subtle,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      child: Image.asset(
+                        imgPath,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: AppColors.gray100,
+                          child: const Center(
+                            child: Icon(Icons.verified_user_rounded,
+                                color: AppColors.brandRed, size: 32),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+
+
 
         // ── Testimonials ────────────────────────────────────────────────────
         _SectionHeader(title: 'What Customers Say'),
@@ -452,6 +619,8 @@ class _CustHomeScreenState extends State<CustHomeScreen> {
         const SizedBox(height: 24),
       ],
     );
+  },
+);
   }
 }
 
@@ -607,28 +776,6 @@ class _CatCard extends StatelessWidget {
   }
 }
 
-class _WhyChip extends StatelessWidget {
-  final String text;
-  const _WhyChip(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppRadius.full),
-        border: Border.all(color: const Color(0xFFFFD0D0)),
-      ),
-      child: Text(text,
-          style: const TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-              color: AppColors.brandRedDark)),
-    );
-  }
-}
-
 class _Testimonial extends StatelessWidget {
   final String q, name;
   final int stars;
@@ -677,10 +824,8 @@ class _Testimonial extends StatelessWidget {
 }
 
 // ─── LOCATION PICKER MODAL ───────────────────────────────────────────────────
-void _showLocationPickerModal(BuildContext context, AppState appState) {
-  final newAddressCtrl = TextEditingController();
-  final newLabelCtrl = TextEditingController(text: 'Other');
-
+void _showLocationPickerModal(
+    BuildContext context, AppState appState, void Function(String screen, {String? param}) nav) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -809,69 +954,16 @@ void _showLocationPickerModal(BuildContext context, AppState appState) {
             }),
             const SizedBox(height: 12),
             const Divider(color: Color(0xFFE5E7EB)),
-            const SizedBox(height: 8),
-            const Text(
-              'Add New Address',
-              style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14,
-                  color: AppColors.gray900),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                SizedBox(
-                  width: 90,
-                  child: TextField(
-                    controller: newLabelCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Label',
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 12),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: newAddressCtrl,
-                    decoration: InputDecoration(
-                      hintText: 'Enter address (e.g. Flat 102, Mysore Road)',
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 12),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  final text = newAddressCtrl.text.trim();
-                  final label = newLabelCtrl.text.trim();
-                  if (text.isNotEmpty) {
-                    final newAddr = SavedAddress(
-                      label: label.isNotEmpty ? label : 'Other',
-                      address: text,
-                      isDefault: true,
-                    );
-                    appState.addAddress(newAddr);
-                    appState.setDefaultAddress(newAddr);
-                    Navigator.pop(ctx);
-                    showAppToast(
-                        context, 'New address set as delivery location! 📍');
-                  } else {
-                    showAppToast(context, 'Please enter an address');
-                  }
+                  Navigator.pop(ctx);
+                  nav('location', param: 'newAddress');
                 },
                 icon: const Icon(Icons.add_location_alt_rounded, size: 18),
-                label: const Text('Save & Set Active Location'),
+                label: const Text('Add New Address'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.brandRed,
                   foregroundColor: Colors.white,

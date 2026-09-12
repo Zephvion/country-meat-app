@@ -1,13 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/product.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../state/app_state.dart';
 import '../../theme/app_theme.dart';
 
 // ─── PROFILE SCREEN ───────────────────────────────────────────────────────────
-class CustProfileScreen extends StatelessWidget {
+class CustProfileScreen extends StatefulWidget {
   final void Function(String screen, {String? param}) nav;
-  const CustProfileScreen({super.key, required this.nav});
+  final String? param;
+  const CustProfileScreen({super.key, required this.nav, this.param});
+
+  @override
+  State<CustProfileScreen> createState() => _CustProfileScreenState();
+}
+
+class _CustProfileScreenState extends State<CustProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.param == 'addresses' || widget.param == 'showAddressesSheet') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _showAddressesSheet(context, context.read<AppState>());
+        }
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant CustProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.param != oldWidget.param &&
+        (widget.param == 'addresses' || widget.param == 'showAddressesSheet')) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _showAddressesSheet(context, context.read<AppState>());
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +47,7 @@ class CustProfileScreen extends StatelessWidget {
 
     return Column(
       children: [
-        _CircleNavHeader(title: 'My Profile', onBack: () => nav('home')),
+        _CircleNavHeader(title: 'My Profile', onBack: () => widget.nav('back')),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -146,26 +178,36 @@ class CustProfileScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            const Text('👑', style: TextStyle(fontSize: 16)),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${appState.rewardTier} Member',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
+                        Flexible(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('👑', style: TextStyle(fontSize: 16)),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  '${appState.rewardTier} Member',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                        Text(
-                          '${appState.rewardPoints} Reward Pts',
-                          style: const TextStyle(
-                            color: Color(0xFFFBBF24),
-                            fontWeight: FontWeight.w900,
-                            fontSize: 13,
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            '${appState.rewardPoints} Reward Pts',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFFFBBF24),
+                              fontWeight: FontWeight.w900,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ],
@@ -182,21 +224,21 @@ class CustProfileScreen extends StatelessWidget {
                     icon: Icons.shopping_bag_outlined,
                     label: 'Orders',
                     value: '${appState.orders.length}',
-                    onTap: () => nav('orders'),
+                    onTap: () => widget.nav('orders'),
                   ),
                   const SizedBox(width: 10),
                   _QuickStatCard(
                     icon: Icons.stars_rounded,
                     label: 'Rewards',
                     value: '${appState.rewardPoints} pts',
-                    onTap: () => nav('rewards'),
+                    onTap: () => widget.nav('rewards'),
                   ),
                   const SizedBox(width: 10),
                   _QuickStatCard(
                     icon: Icons.account_balance_wallet_outlined,
                     label: 'Wallet',
-                    value: '₹${appState.rewardPoints}',
-                    onTap: () => nav('addcard'),
+                    value: '₹${appState.walletBalance.toStringAsFixed(0)}',
+                    onTap: () => widget.nav('wallet'),
                   ),
                 ],
               ),
@@ -224,15 +266,15 @@ class CustProfileScreen extends StatelessWidget {
                     _ProfileMenuItem(
                       icon: Icons.account_balance_wallet_outlined,
                       title: 'Country Meat Wallet',
-                      sub: 'Cash+ Balance: ₹${appState.rewardPoints}',
-                      onTap: () => nav('addcard'),
+                      sub: 'Balance: ₹${appState.walletBalance.toStringAsFixed(2)}',
+                      onTap: () => widget.nav('wallet'),
                     ),
                     const Divider(height: 1, color: Color(0xFFF3F4F6)),
                     _ProfileMenuItem(
                       icon: Icons.emoji_events_outlined,
                       title: 'Loyalty & Rewards',
                       sub: 'Milestones, badges & coupons',
-                      onTap: () => nav('rewards'),
+                      onTap: () => widget.nav('rewards'),
                     ),
                   ],
                 ),
@@ -255,7 +297,7 @@ class CustProfileScreen extends StatelessWidget {
                       icon: Icons.campaign_outlined,
                       title: 'Refer & Earn',
                       sub: 'Invite friends & get 10% OFF coupon',
-                      onTap: () => showAppToast(context, 'Referral link copied to clipboard! 🎁'),
+                      onTap: () => widget.nav('referral'),
                     ),
                     const Divider(height: 1, color: Color(0xFFF3F4F6)),
                     _ProfileMenuItem(
@@ -350,46 +392,81 @@ class CustProfileScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Saved Addresses', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => Navigator.pop(ctx),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.gray100,
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        size: 18,
+                        color: AppColors.gray700,
+                      ),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              ...appState.addresses.map((a) => Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: a.isDefault ? AppColors.brandRedBg : AppColors.gray50,
-                  borderRadius: BorderRadius.circular(AppRadius.base),
-                  border: Border.all(color: a.isDefault ? AppColors.brandRed : AppColors.gray200),
-                ),
-                child: Row(
-                  children: [
-                    Text(a.isDefault ? '🏠' : '🏢', style: const TextStyle(fontSize: 20)),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(a.label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                          Text(a.address, style: const TextStyle(color: AppColors.gray500, fontSize: 11.5)),
-                        ],
+              ...appState.addresses.map((a) => GestureDetector(
+                onTap: () {
+                  appState.setDefaultAddress(a);
+                  showAppToast(context, 'Set as default delivery address! 🏠');
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: a.isDefault ? AppColors.brandRedBg : AppColors.gray50,
+                    borderRadius: BorderRadius.circular(AppRadius.base),
+                    border: Border.all(color: a.isDefault ? AppColors.brandRed : AppColors.gray200),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(a.isDefault ? '🏠' : '🏢', style: const TextStyle(fontSize: 20)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(a.label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                                if (a.isDefault) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.brandRed,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text('DEFAULT', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            Text(a.address, style: const TextStyle(color: AppColors.gray500, fontSize: 11.5)),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               )),
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
+                child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(ctx);
-                    _showAddAddressModal(context, appState);
+                    widget.nav('location', param: 'profileAddress');
                   },
-                  child: const Text('+ Add New Address'),
+                  icon: const Icon(Icons.add_location_alt_rounded, size: 18),
+                  label: const Text('Add New Address'),
                 ),
               ),
             ],
@@ -420,8 +497,30 @@ class CustProfileScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Edit Profile',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Edit Profile',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.gray100,
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        size: 18,
+                        color: AppColors.gray700,
+                      ),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 16),
               TextField(
                 controller: nameCtrl,
@@ -452,81 +551,9 @@ class CustProfileScreen extends StatelessWidget {
     );
   }
 
-  void _showAddAddressModal(BuildContext context, AppState appState) {
-    final labelCtrl = TextEditingController(text: 'Home');
-    final addrCtrl = TextEditingController();
-    bool isDefault = false;
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
-      ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) => SafeArea(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-              top: 20, left: 20, right: 20,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Add New Address',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: labelCtrl,
-                  decoration: const InputDecoration(labelText: 'Label (e.g. Home, Work)', prefixIcon: Icon(Icons.label_rounded)),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: addrCtrl,
-                  maxLines: 2,
-                  decoration: const InputDecoration(labelText: 'Full Address', prefixIcon: Icon(Icons.location_on_rounded)),
-                ),
-                const SizedBox(height: 8),
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Set as default delivery address', style: TextStyle(fontSize: 13)),
-                  value: isDefault,
-                  onChanged: (v) => setModalState(() => isDefault = v ?? false),
-                  activeColor: AppColors.brandRed,
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (addrCtrl.text.isNotEmpty) {
-                        appState.addAddress(SavedAddress(
-                          label: labelCtrl.text.isEmpty ? 'Home' : labelCtrl.text,
-                          address: addrCtrl.text,
-                          isDefault: isDefault,
-                        ));
-                        Navigator.pop(ctx);
-                        showAppToast(context, 'Address added! 🏠');
-                      }
-                    },
-                    child: const Text('Save Address'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   void _showNotificationSettingsModal(BuildContext context) {
-    bool orderUpdates = true;
-    bool promoOffers = true;
-    bool slotReminders = false;
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -534,59 +561,10 @@ class CustProfileScreen extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
       ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) => SafeArea(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-              top: 20, left: 20, right: 20,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Notification Preferences',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 16),
-                SwitchListTile(
-                  title: const Text('Order Status Updates'),
-                  subtitle: const Text('Get live tracking & delivery updates'),
-                  value: orderUpdates,
-                  activeColor: AppColors.brandRed,
-                  onChanged: (v) => setModalState(() => orderUpdates = v),
-                ),
-                SwitchListTile(
-                  title: const Text('Promotions & Discounts'),
-                  subtitle: const Text('Receive notifications for special sales'),
-                  value: promoOffers,
-                  activeColor: AppColors.brandRed,
-                  onChanged: (v) => setModalState(() => promoOffers = v),
-                ),
-                SwitchListTile(
-                  title: const Text('Delivery Slot Reminders'),
-                  subtitle: const Text('Reminders to place orders for morning slot'),
-                  value: slotReminders,
-                  activeColor: AppColors.brandRed,
-                  onChanged: (v) => setModalState(() => slotReminders = v),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      showAppToast(context, 'Notification settings saved! 🔔');
-                    },
-                    child: const Text('Save Preferences'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      builder: (ctx) => const _NotificationSettingsSheet(),
     );
   }
+
 
   void _showContactSupportModal(BuildContext context) {
     showModalBottomSheet(
@@ -606,8 +584,30 @@ class CustProfileScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Customer Support',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Customer Support',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.gray100,
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        size: 18,
+                        color: AppColors.gray700,
+                      ),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 6),
               const Text('We are available 6AM – 9PM every day to help you.',
                   style: TextStyle(color: AppColors.gray500, fontSize: 13)),
@@ -616,18 +616,48 @@ class CustProfileScreen extends StatelessWidget {
                 leading: const Icon(Icons.phone_rounded, color: AppColors.brandRed),
                 title: const Text('Call Support'),
                 subtitle: const Text('+91 98765 43210'),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(ctx);
-                  showAppToast(context, 'Calling +91 98765 43210...');
+                  final uri = Uri.parse('tel:+919876543210');
+                  try {
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri);
+                    } else {
+                      if (context.mounted) {
+                        showAppToast(context, 'Could not open phone dialer');
+                      }
+                    }
+                  } catch (_) {
+                    if (context.mounted) {
+                      showAppToast(context, 'Could not open phone dialer');
+                    }
+                  }
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.email_rounded, color: AppColors.brandRed),
                 title: const Text('Email Us'),
                 subtitle: const Text('support@countrymeat.in'),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(ctx);
-                  showAppToast(context, 'Opening email to support@countrymeat.in');
+                  final uri = Uri(
+                    scheme: 'mailto',
+                    path: 'support@countrymeat.in',
+                    queryParameters: {'subject': 'Support Request - Country Meat App'},
+                  );
+                  try {
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri);
+                    } else {
+                      if (context.mounted) {
+                        showAppToast(context, 'Could not open email app');
+                      }
+                    }
+                  } catch (_) {
+                    if (context.mounted) {
+                      showAppToast(context, 'Could not open email app');
+                    }
+                  }
                 },
               ),
               ListTile(
@@ -717,9 +747,22 @@ class CustProfileScreen extends StatelessWidget {
               children: [
                 const Text('Terms & Privacy Policy',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                IconButton(
-                  icon: const Icon(Icons.close_rounded),
-                  onPressed: () => Navigator.pop(ctx),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.gray100,
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: AppColors.gray700,
+                    ),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
                 ),
               ],
             ),
@@ -768,6 +811,300 @@ class CustProfileScreen extends StatelessWidget {
   }
 }
 
+// ─── NOTIFICATION SETTINGS SHEET ─────────────────────────────────────────────
+class _NotificationSettingsSheet extends StatefulWidget {
+  const _NotificationSettingsSheet();
+
+  @override
+  State<_NotificationSettingsSheet> createState() =>
+      _NotificationSettingsSheetState();
+}
+
+class _NotificationSettingsSheetState extends State<_NotificationSettingsSheet>
+    with WidgetsBindingObserver {
+  PermissionStatus? _permissionStatus;
+  bool _isLoading = true;
+
+  bool _orderUpdates = true;
+  bool _promoOffers = true;
+  bool _slotReminders = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkPermission();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkPermission();
+    }
+  }
+
+  Future<void> _checkPermission() async {
+    try {
+      final status = await Permission.notification.status;
+      if (mounted) {
+        setState(() {
+          _permissionStatus = status;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _requestPermission() async {
+    try {
+      final status = await Permission.notification.request();
+      if (mounted) {
+        setState(() {
+          _permissionStatus = status;
+        });
+      }
+    } catch (_) {
+      // Fallback
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          top: 20,
+          left: 20,
+          right: 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Notification Preferences',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.gray100,
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: AppColors.gray700,
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildBody(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 36),
+        child: Center(
+          child: SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: AppColors.brandRed,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final isGranted = _permissionStatus?.isGranted == true ||
+        _permissionStatus?.isProvisional == true;
+
+    if (isGranted) {
+      return _buildGrantedSettings();
+    }
+
+    if (_permissionStatus?.isPermanentlyDenied == true) {
+      return _buildPermanentlyDeniedState();
+    }
+
+    return _buildPermissionRequiredState();
+  }
+
+  Widget _buildGrantedSettings() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SwitchListTile(
+          title: const Text('Order Status Updates'),
+          subtitle: const Text('Get live tracking & delivery updates'),
+          value: _orderUpdates,
+          activeThumbColor: AppColors.brandRed,
+          onChanged: (v) => setState(() => _orderUpdates = v),
+        ),
+        SwitchListTile(
+          title: const Text('Promotions & Discounts'),
+          subtitle: const Text('Receive notifications for special sales'),
+          value: _promoOffers,
+          activeThumbColor: AppColors.brandRed,
+          onChanged: (v) => setState(() => _promoOffers = v),
+        ),
+        SwitchListTile(
+          title: const Text('Delivery Slot Reminders'),
+          subtitle: const Text('Reminders to place orders for morning slot'),
+          value: _slotReminders,
+          activeThumbColor: AppColors.brandRed,
+          onChanged: (v) => setState(() => _slotReminders = v),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              showAppToast(context, 'Notification settings saved! 🔔');
+            },
+            child: const Text('Save Preferences'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPermissionRequiredState() {
+    final isDenied = _permissionStatus?.isDenied == true;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: AppColors.brandRed.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.notifications_active_outlined,
+                color: AppColors.brandRed,
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isDenied
+                  ? 'Notifications are Disabled'
+                  : 'Notifications are Currently Disabled',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              isDenied
+                  ? 'Notifications are currently disabled. Allow notifications to receive live order updates, promotions, and delivery reminders.'
+                  : 'Allow notifications to receive live order updates, promotions, and delivery reminders.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.gray500,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _requestPermission,
+                child: const Text('Enable Notifications'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPermanentlyDeniedState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: AppColors.brandRed.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.notifications_off_outlined,
+                color: AppColors.brandRed,
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Notifications are Blocked',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Notifications are blocked in your device settings. Please open settings to allow updates for orders, promotions, and delivery reminders.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.gray500,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => openAppSettings(),
+                child: const Text('Open Device Settings'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ProfileOption extends StatelessWidget {
   final String icon, label;
   final VoidCallback onTap;
@@ -803,7 +1140,7 @@ class CustAddCardScreen extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(4, 10, 16, 6),
           child: Row(children: [
             IconButton(
-              onPressed: () => nav('profile'),
+              onPressed: () => nav('back'),
               icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
             ),
             const Text('Saved Cards',
